@@ -1,0 +1,138 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  password  String
+  role      String   @default("USER")
+  companyId String?
+  company   Company? @relation(fields: [companyId], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("users")
+}
+
+model Company {
+  id          String   @id @default(cuid())
+  name        String
+  taxNumber   String?  @unique
+  address     String?
+  phone       String?
+  email       String?
+  users       User[]
+  customers   Customer[]
+  products    Product[]
+  invoices    Invoice[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("companies")
+}
+
+model Customer {
+  id          String   @id @default(cuid())
+  name        String
+  email       String?
+  phone       String?
+  address     String?
+  taxNumber   String?
+  type        String   @default("CUSTOMER") // CUSTOMER, SUPPLIER
+  balance     Float    @default(0)
+  companyId   String
+  company     Company  @relation(fields: [companyId], references: [id])
+  invoices    Invoice[]
+  transactions Transaction[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("customers")
+}
+
+model Product {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  price       Float
+  unit        String   @default("ADET")
+  stock       Int      @default(0)
+  companyId   String
+  company     Company  @relation(fields: [companyId], references: [id])
+  invoiceItems InvoiceItem[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("products")
+}
+
+model Invoice {
+  id          String   @id @default(cuid())
+  invoiceNo   String   @unique
+  date        DateTime @default(now())
+  dueDate     DateTime?
+  status      String   @default("DRAFT") // DRAFT, SENT, PAID, OVERDUE
+  subtotal    Float    @default(0)
+  taxAmount   Float    @default(0)
+  total       Float    @default(0)
+  notes       String?
+  customerId  String
+  customer    Customer @relation(fields: [customerId], references: [id])
+  companyId   String
+  company     Company  @relation(fields: [companyId], references: [id])
+  items       InvoiceItem[]
+  payments    Payment[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("invoices")
+}
+
+model InvoiceItem {
+  id          String   @id @default(cuid())
+  quantity    Float
+  price       Float
+  tax         Float    @default(18)
+  total       Float
+  invoiceId   String
+  invoice     Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  productId   String?
+  product     Product? @relation(fields: [productId], references: [id])
+  description String
+  createdAt   DateTime @default(now())
+
+  @@map("invoice_items")
+}
+
+model Payment {
+  id          String   @id @default(cuid())
+  amount      Float
+  date        DateTime @default(now())
+  method      String   @default("CASH") // CASH, BANK, CREDIT_CARD
+  notes       String?
+  invoiceId   String
+  invoice     Invoice  @relation(fields: [invoiceId], references: [id])
+  createdAt   DateTime @default(now())
+
+  @@map("payments")
+}
+
+model Transaction {
+  id          String   @id @default(cuid())
+  type        String   // DEBIT, CREDIT
+  amount      Float
+  description String
+  date        DateTime @default(now())
+  customerId  String
+  customer    Customer @relation(fields: [customerId], references: [id])
+  createdAt   DateTime @default(now())
+
+  @@map("transactions")
+}
